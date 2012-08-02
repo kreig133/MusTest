@@ -140,10 +140,14 @@ public class IaskSelenium {
 
     public void deauthorize() throws InterruptedException {
         if (isAuthorized()) {
-            try {
-                alternativeClick(driver.findElement(By.xpath("//a[text() = 'выйти']")));
-            } catch (NoSuchElementException e) {
-            }
+            // "выйти" работает пока что как-то криво
+//            try {
+//                alternativeClick(driver.findElement(By.xpath("//a[text() = 'выйти']")));
+//            } catch (NoSuchElementException e) {
+//            }
+            // старый метод деавторизации
+            driver.manage().deleteCookieNamed("JSESSIONID");
+            driver.navigate().refresh();
             waitLoading(1);
         }
     }
