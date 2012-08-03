@@ -1,8 +1,10 @@
 package com.aplana.iask.mus.test;
 
 import com.aplana.iask.mus.test.persistence.dao.MusOpDao;
+import com.aplana.iask.mus.test.persistence.dao.MusOpDaoException;
 import com.aplana.iask.mus.test.persistence.entity.GetOperationDataIn;
 import com.aplana.iask.mus.test.persistence.entity.GetOperationDataOut;
+import com.aplana.iask.mus.test.selenium.AuthorizationException;
 import com.aplana.iask.mus.test.selenium.IaskSelenium;
 import org.openqa.selenium.By;
 import org.openqa.selenium.NoSuchElementException;
@@ -17,13 +19,14 @@ import java.util.*;
 
 public class MusTester {
 
-    public static final String OPERATION_PROPS = "operations.properties";
+    public static final String  OPERATION_PROPS = "operations.properties";
+    public static final int     AUTH_ATTEMPTS   = 3;
 
     private static final PrintStream OUT = System.out;
 
-    static {
+//    static {
 //        addOperation(13,	"23ЮИ"); // TODO: unique
-    }
+//    }
 
     private final Map<String, List<Integer>> operationsMap;
     private final MusOpDao musOpDao;
@@ -59,18 +62,37 @@ public class MusTester {
                     iaskSelenium.deauthorize();
                 }
 
-                iaskSelenium.waitLoading(1);
-                iaskSelenium.authorization(login);
-                iaskSelenium.waitLoading(2);
+                int authAttempts = AUTH_ATTEMPTS;
+                while (true) {
+                    try {
+                        iaskSelenium.closeAnyBox();
+                        iaskSelenium.waitLoading(1);
+                        iaskSelenium.authorization(login);
+                        iaskSelenium.waitLoading(2);
+                        break;
+                    } catch (AuthorizationException e) {
+                        if (authAttempts-- == 0) {
+                            throw e;
+                        }
+                        Thread.sleep(30 * 1000); // wait 30 seconds
+                    }
+                }
 
                 for (Integer operation : operationsMap.get(login)) {
                     iaskSelenium.closeAnyBox();
+                    iaskSelenium.closeAllTabs();
 
                     GetOperationDataIn getOperationDataIn = new GetOperationDataIn();
                     getOperationDataIn.setOpNum(operation);
                     getOperationDataIn.setLogin(login);
 
-                    GetOperationDataOut getOperationDataOut = musOpDao.getOperationData(getOperationDataIn);
+                    GetOperationDataOut getOperationDataOut;
+                    try {
+                        getOperationDataOut = musOpDao.getOperationData(getOperationDataIn);
+                    } catch (MusOpDaoException e) {
+                        OUT.println(e.toString());
+                        continue;
+                    }
 
                     try {
                         openAgreement(getOperationDataOut);
@@ -130,6 +152,8 @@ public class MusTester {
                     throw new Exception("Нет операций, доступных для выполнения.");
                 }
 
+                iaskSelenium.closeAnyBox();
+
                 for (int i = 0; i < size; i++) {
                     element = elements.get(i);
                     if (element.getText().equals(getOperationDataOut.getOpName())) {
@@ -161,15 +185,20 @@ public class MusTester {
 
     private void checkForErrorBox() throws Exception {
         WebElement element = null;
+        final String xpathExpression = "//span[starts-with(text(), '%s')]/ancestor::div[normalize-space(@class) = " +
+                "'x-window x-component']/div[@class = 'x-window-bwrap']%s";
         try {
-            element = webDriver.findElement(By.xpath("//span[text() = 'Предупреждение " +
-                    "системы']/ancestor::div[normalize-space(@class) = 'x-window x-component']/div[@class = 'x-window-bwrap']//div[@class = 'gwt-Label x-component']"));
-
+            element = webDriver.findElement(By.xpath(String.format(xpathExpression, "Предупреждение системы",
+                    "//div[@class = 'gwt-Label x-component']")));
         } catch (org.openqa.selenium.NoSuchElementException nsee) {
-            try {
-                element = webDriver.findElement(By.xpath("//span[text() = 'Ошибка']/ancestor::div[" +
-                        "normalize-space(@class) = 'x-window x-component']/div[@class = 'x-window-bwrap']//div[@class = 'gwt-HTML' and position() > 1]"));
-            } catch (NoSuchElementException e) {
+            List<WebElement> webElements = webDriver.findElements(By.xpath(String.format(xpathExpression, "Ошибка",
+                        "//div[@class = 'gwt-HTML']")));
+
+            for (WebElement el : webElements) {
+                if (el.getText().trim().length() > 0) {
+                    element = el;
+                    break;
+                }
             }
         }
 
@@ -187,8 +216,6 @@ public class MusTester {
         webDriver.switchTo().frame(webDriver.findElementByXPath("//iframe[@class = 'gwt-Frame x-component']"));
 
         iaskSelenium.waitLoading(1);
-
-        iaskSelenium.closeAnyBox();
     }
 
     private void findAgreement(GetOperationDataOut getOperationDataOut)
@@ -203,6 +230,8 @@ public class MusTester {
         element = webDriver.findElementByXPath("//button[text() = 'Применить']");
         iaskSelenium.alternativeClick(element);
         iaskSelenium.waitLoading(4);
+
+        checkForErrorBox();
 
         iaskSelenium.closeAnyBox();
 

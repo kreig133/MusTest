@@ -158,7 +158,6 @@ public class IaskSelenium {
             WebElement element = driver.findElement(By.xpath(String.format(xpathExpression, s)));
             (new Actions(driver)).moveToElement(element).build().perform();
             if (s.equals(path[path.length - 1])) {
-                //element.click();
                 alternativeClick(element);
             }
             Thread.sleep(50);
@@ -166,12 +165,8 @@ public class IaskSelenium {
     }
 
     public void alternativeClick(WebElement element) {
-        new Actions(driver).clickAndHold(element).build().perform();
-        if (element.getTagName().equals("button")) {
-            element.sendKeys("\n");
-        } else {
-            element.click();
-        }
+        new Actions(driver).moveToElement(element, 1, 1).build().perform();
+        element.sendKeys("\n");
     }
 
     public void closeAnyBox() {
@@ -190,6 +185,14 @@ public class IaskSelenium {
             } catch (Exception e) {
                 break;
             }
+        }
+    }
+
+    public void closeAllTabs() {
+        List<WebElement> webElements = driver.findElements(By.xpath("//div[@class = 'bigTabs x-unselectable']//li//a[@class = 'x-tab-strip-close']"));
+
+        for (WebElement element : webElements) {
+            element.click();
         }
     }
 
