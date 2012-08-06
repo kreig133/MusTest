@@ -171,7 +171,7 @@ public class MusTester {
                     element = webDriver.findElement(
                             By.xpath("//li[not(contains(@class, 'x-tab-strip-active'))]//span[starts-with(text(), " +
                                     "'<<')]/ancestor::li"));
-                    element.click();
+                    iaskSelenium.alternativeClick(element);
                     iaskSelenium.waitLoading(2);
                 } else {
                     break;
@@ -239,7 +239,7 @@ public class MusTester {
             element = webDriver.findElementByXPath(
                     "//div[@class = 'x-grid3-cell-inner x-grid3-col-sPackTitle' and text() = '" +
                             getOperationDataOut.getPackTitle() + "']");
-            element.click();
+            iaskSelenium.alternativeClick(element);
         } catch (NoSuchElementException e) {
             throw new Exception(String.format("Договор %s не найден.", getOperationDataOut.getPackTitle()));
         }

@@ -1,5 +1,6 @@
 package com.aplana.iask.mus.test.selenium;
 
+import org.intellij.lang.annotations.Language;
 import org.openqa.selenium.By;
 import org.openqa.selenium.NoSuchElementException;
 import org.openqa.selenium.WebElement;
@@ -156,7 +157,7 @@ public class IaskSelenium {
         final String xpathExpression = "//td[@class='gwt-MenuItem']/span[text()='%s']";
         for (String s : path) {
             WebElement element = driver.findElement(By.xpath(String.format(xpathExpression, s)));
-            (new Actions(driver)).moveToElement(element).build().perform();
+            moveToElementCenter(element).build().perform();
             if (s.equals(path[path.length - 1])) {
                 alternativeClick(element);
             }
@@ -165,16 +166,28 @@ public class IaskSelenium {
     }
 
     public void alternativeClick(WebElement element) {
-        new Actions(driver).moveToElement(element, 1, 1).build().perform();
-        element.sendKeys("\n");
+        final Actions actions = moveToElementCenter(element);
+        if (element.getTagName().toLowerCase().equals("button")) {
+            actions.build().perform();
+            element.sendKeys("\n");
+        } else {
+            actions.click().build().perform();
+        }
     }
 
     public void closeAnyBox() {
+        clickOnAllCloseButtons("//div[normalize-space(@class) = 'x-nodrag x-tool-close x-tool x-component']");
+    }
+
+    public void closeAllTabs() {
+        clickOnAllCloseButtons("//div[@class = 'bigTabs x-unselectable']//li//a[@class = 'x-tab-strip-close']");
+    }
+
+    private void clickOnAllCloseButtons(@Language("XPath2") String closeButtonXPath) {
         while (true) {
             try{
-                List<WebElement> webElements = driver.findElements(By.xpath("//div[normalize-space(@class) = " +
-                        "'x-nodrag x-tool-close x-tool x-component']"));
-                if (webElements.isEmpty()) {
+                List<WebElement> webElements = driver.findElements(By.xpath(closeButtonXPath));
+                if (webElements.isEmpty() || webElements.size() == 1 && !webElements.get(0).isDisplayed()) {
                     break;
                 }
 
@@ -188,12 +201,16 @@ public class IaskSelenium {
         }
     }
 
-    public void closeAllTabs() {
-        List<WebElement> webElements = driver.findElements(By.xpath("//div[@class = 'bigTabs x-unselectable']//li//a[@class = 'x-tab-strip-close']"));
+    private Actions moveToElementCenter(WebElement element) {
+        return moveToElementCenter(null, element);
+    }
 
-        for (WebElement element : webElements) {
-            element.click();
+    private Actions moveToElementCenter(Actions actions, WebElement element) {
+        if (null == actions) {
+            actions = new Actions(driver);
         }
+
+        return actions.moveToElement(element, element.getSize().getWidth() / 2, element.getSize().getHeight() / 2);
     }
 
 }
